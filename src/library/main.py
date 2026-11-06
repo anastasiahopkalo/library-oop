@@ -10,14 +10,27 @@ def main() -> None:
     library.register_member(alice)
     library.register_member(bob)
 
-    book1 = Book(title = "The Land of Stories", author = "Kris Colfer", isbn = "978-0451524935")
-    book2 = Book(title="The Hobbit", author="J.R.R. Tolkien", isbn="978-0547928227")
-    book3 = Book(title="Dune", author="Frank Herbert", isbn="978-0441172719")
-    book4 = Book(title="Fahrenheit 451", author="Ray Bradbury", isbn="978-1451673319")
-    library.add_book(book1)
-    library.add_book(book2)
-    library.add_book(book3)
-    library.add_book(book4)
+    raw_books = [
+        "The Land of Stories | Chris Colfer | 978-0451524935",
+        "The Hobbit | J.R.R. Tolkien | 978-0547928227",
+        "Dune | Frank Herbert | 978-0441172719",
+        "Fahrenheit 451 | Ray Bradbury | 978-1451673319",
+    ]
+
+    for line in raw_books:
+        library.add_book(Book.from_string(line))
+
+    # Зберігаємо посилання для зручного виводу
+    book1 = library.find_book_by_title("The Land of Stories")
+    book2 = library.find_book_by_title("The Hobbit")
+    book3 = library.find_book_by_title("Dune")
+    book4 = library.find_book_by_title("Fahrenheit 451")
+
+    try:
+        malformed_book = Book.from_string("Brave New World | Aldous Huxley")
+        library.add_book(malformed_book)
+    except ValueError as e:
+        print(f"Format error: {e}\n")
 
     library.checkout(member_id="M001", isbn="978-0451524935")  # Alice takes 1984
     print(f"Alice borrowed: {book1}")

@@ -1,39 +1,66 @@
+from pathlib import Path
+from typing import Self
+
 from src.library.book import Book
 from src.library.member import Member
 
 
 class Library:
     def __init__(self)-> None:
-        self.books: dict[str, Book] = {}
-        self.members: dict[str, Member] = {}
+        self._books: dict[str, Book] = {}
+        self._members: dict[str, Member] = {}
+
+    @property
+    def books(self) -> tuple[Book, ...]:
+        return tuple(self._books.values())
+
+    @property
+    def members(self) -> tuple[Member, ...]:
+        return tuple(self._members.values())
     def add_book(self, book: Book)-> None:
-        self.books[book.isbn] = book
+        if book.isbn in self._books:
+            raise ValueError(f"Book {book.title} already exists in the library")
+        self._books[book.isbn] = book
     def register_member(self, member: Member)-> None:
-        self.members[member.member_id] = member
+        if member.member_id in self._members:
+            raise ValueError(f"Member {member.member_id} is already registered in the library")
+        self._members[member.member_id] = member
     def find_book_by_title(self,title : str) -> Book | None:
-        for book in self.books.values():
+        for book in self._books.values():
             if book.title == title:
                 return book
         return None
     def checkout(self, member_id : str, isbn: str) -> None:
-        if member_id not in self.members:
+        if member_id not in self._members:
             raise ValueError(f"Member {member_id} not available")
-        if isbn not in self.books:
+        if isbn not in self._books:
             raise ValueError(f"ISBN {isbn} not available")
-        member = self.members[member_id]
-        book = self.books[isbn]
+        member = self._members[member_id]
+        book = self._books[isbn]
         if not book.is_available:
             raise ValueError(f"Book {isbn} is not available")
         member.borrow(book)
         book.is_available = False
 
     def return_book(self, member_id: str, isbn: str) -> None:
-        if member_id not in self.members:
+        if member_id not in self._members:
             raise ValueError(f"Member {member_id} not available")
-        if isbn not in self.books:
+        if isbn not in self._books:
             raise ValueError(f"ISBN {isbn} not available")
-        member = self.members[member_id]
-        book = self.books[isbn]
+        member = self._members[member_id]
+        book = self._books[isbn]
         member.return_book(book)
         book.is_available = True
+
+    @classmethod
+    def from_books_file(cls, path: str | Path) -> Self:
+        library = cls()
+        file_path = Path(path)
+        with file_path.open("r", encoding="utf-8") as file:
+            for line in file:
+                line = line.strip()
+                if line:  # Ігноруємо порожні рядки
+                    book = Book.from_string(line)
+                    library.add_book(book)
+        return library
 
