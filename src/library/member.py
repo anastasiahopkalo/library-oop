@@ -1,10 +1,11 @@
-from typing import Self
+from typing import ClassVar, Self
 
 from src.library.book import Book
 
 
 class Member:
-    MAX_BOOKS = 3
+    MAX_BOOKS: ClassVar[int] = 3
+    LOAN_DAYS: ClassVar[int] = 21
 
     def __init__ (self, name: str, member_id :str) -> None:
         self.name = name
@@ -41,5 +42,4 @@ class Member:
         self._borrowed_books.remove(book)
 
     def __repr__ (self) -> str:
-        return f"Member(name={self.name!r}, member_id={self.member_id!r})"
-
+        return f"{type(self).__name__}(name={self.name!r}, member_id={self.member_id!r})"

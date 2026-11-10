@@ -1,7 +1,9 @@
+from datetime import date, timedelta
 from pathlib import Path
 from typing import Self
 
 from src.library.book import Book
+from src.library.loan import Loan
 from src.library.member import Member
 
 
@@ -9,6 +11,7 @@ class Library:
     def __init__(self)-> None:
         self._books: dict[str, Book] = {}
         self._members: dict[str, Member] = {}
+        self._loans: dict[str, Loan] = {}
 
     @property
     def books(self) -> tuple[Book, ...]:
@@ -17,6 +20,19 @@ class Library:
     @property
     def members(self) -> tuple[Member, ...]:
         return tuple(self._members.values())
+
+    @property
+    def active_loans(self) -> tuple[Loan, ...]:
+        return tuple(self._loans.values())
+
+    def loans_for(self, member_id: str) -> tuple[Loan, ...]:
+        if member_id not in self._members:
+            raise ValueError(f"Member {member_id} not available")
+        return tuple(
+            loan for loan in self._loans.values()
+            if loan.member_id == member_id
+        )
+
     def add_book(self, book: Book)-> None:
         if book.isbn in self._books:
             raise ValueError(f"Book {book.title} already exists in the library")
@@ -30,7 +46,7 @@ class Library:
             if book.title == title:
                 return book
         return None
-    def checkout(self, member_id : str, isbn: str) -> None:
+    def checkout(self, member_id : str, isbn: str) -> date:
         if member_id not in self._members:
             raise ValueError(f"Member {member_id} not available")
         if isbn not in self._books:
@@ -39,8 +55,11 @@ class Library:
         book = self._books[isbn]
         if not book.is_available:
             raise ValueError(f"Book {isbn} is not available")
+        due_date = date.today() + timedelta(days=member.LOAN_DAYS)
         member.borrow(book)
         book.is_available = False
+        self._loans[isbn] = Loan(book = book, member_id=member_id, due_date=due_date)
+        return due_date
 
     def return_book(self, member_id: str, isbn: str) -> None:
         if member_id not in self._members:
@@ -51,6 +70,7 @@ class Library:
         book = self._books[isbn]
         member.return_book(book)
         book.is_available = True
+        self._loans.pop(isbn, None)
 
     @classmethod
     def from_books_file(cls, path: str | Path) -> Self:
@@ -59,7 +79,7 @@ class Library:
         with file_path.open("r", encoding="utf-8") as file:
             for line in file:
                 line = line.strip()
-                if line:  # Ігноруємо порожні рядки
+                if line:
                     book = Book.from_string(line)
                     library.add_book(book)
         return library

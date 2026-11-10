@@ -1,30 +1,11 @@
 from src.library.book import Book
 from src.library.library import Library
 from src.library.member import Member
+from src.library.member_types import PremiumMember, StudentMember
 
 
 def main() -> None:
     library = Library()
-    alice = Member(name = 'Alice', member_id = "M001")
-    bob = Member(name = 'Bob', member_id = "M002")
-    library.register_member(alice)
-    library.register_member(bob)
-
-    raw_books = [
-        "The Land of Stories | Chris Colfer | 978-0451524935",
-        "The Hobbit | J.R.R. Tolkien | 978-0547928227",
-        "Dune | Frank Herbert | 978-0441172719",
-        "Fahrenheit 451 | Ray Bradbury | 978-1451673319",
-    ]
-
-    for line in raw_books:
-        library.add_book(Book.from_string(line))
-
-    # Зберігаємо посилання для зручного виводу
-    book1 = library.find_book_by_title("The Land of Stories")
-    book2 = library.find_book_by_title("The Hobbit")
-    book3 = library.find_book_by_title("Dune")
-    book4 = library.find_book_by_title("Fahrenheit 451")
 
     try:
         malformed_book = Book.from_string("Brave New World | Aldous Huxley")
@@ -32,38 +13,51 @@ def main() -> None:
     except ValueError as e:
         print(f"Format error: {e}\n")
 
-    library.checkout(member_id="M001", isbn="978-0451524935")  # Alice takes 1984
-    print(f"Alice borrowed: {book1}")
+    alice = Member(name="Alice", member_id="M001")
+    bob = StudentMember(name="Bob", member_id="S001", school="KPI")
+    charlie = PremiumMember(name="Charlie", member_id="P001", annual_fee=100.0)
 
-    library.checkout(member_id="M001", isbn="978-0547928227")  # Alice takes The Hobbit
-    print(f"Alice borrowed: {book2}")
+    for member in (alice, bob, charlie):
+        library.register_member(member)
 
-    library.checkout(member_id="M002", isbn="978-0441172719")  # Bob takes Dune
-    print(f"Bob borrowed: {book3}")
+    raw_books = [
+        "The Land of Stories | Chris Colfer | 978-0451524935",
+        "The Hobbit | J.R.R. Tolkien | 978-0547928227",
+        "Dune | Frank Herbert | 978-0441172719",
+        "Fahrenheit 451 | Ray Bradbury | 978-1451673319",
+        "1984 | George Orwell | 978-0451524936",
+        "Brave New World | Aldous Huxley | 978-0060850524",
+        "Animal Farm | George Orwell | 978-0451526342",
+        "The Catcher in the Rye | J.D. Salinger | 978-0316769488",
+        "To Kill a Mockingbird | Harper Lee | 978-0061120084",
+    ]
+
+    for line in raw_books:
+        library.add_book(Book.from_string(line))
+
+    all_books = list(library.books)
+    book_index = 0
+
+    for member in (alice, bob, charlie):
+        for _ in range(3):
+            book = all_books[book_index]
+            book_index += 1
+            try:
+                due_date = library.checkout(member.member_id, book.isbn)
+                print(f" '{book.title}' borrowed until {due_date}")
+            except ValueError as e:
+                print(f"'{book.title}' — {e}")
 
     try:
-        library.checkout(member_id="M002", isbn="978-0451524935")
+        library.checkout(member_id="M001", isbn=all_books[0].isbn)
     except ValueError as e:
         print(f"Book is already booked: {e}")
 
     try:
-        library.checkout(member_id="M999", isbn="978-1451673319")
+        library.checkout(member_id="M999", isbn=all_books[3].isbn)
     except ValueError as e:
         print(f"Member ID doesn't exist: {e}")
-
-    library.checkout(member_id="M001", isbn="978-1451673319")  # Alice takes 3rd book
-    print(f"\nAlice borrowed 3rd book: {book4}")
-
-    extra_book = Book(title="Brave New World", author="Aldous Huxley", isbn="978-0060850524")
-    library.add_book(extra_book)
-    try:
-        library.checkout(member_id="M001", isbn="978-0060850524")
-    except ValueError as e:
-        print(f"You have reached your limit (max 3): {e}")
-
-    print(f"Alice: {alice.borrowed_books}")
 
 
 if __name__ == "__main__":
     main()
-

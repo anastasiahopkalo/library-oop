@@ -29,7 +29,7 @@ class Book:
         if len(parts) != 3:
             raise ValueError(f"Expected 'title | author | isbn', got {line!r}")
         title, author, isbn = parts
-        return cls(title, author, isbn)
+        return cls(title=title, author=author, isbn=isbn)
 
     def __str__(self) -> str:
         status = "available" if self.is_available else "checked out"
