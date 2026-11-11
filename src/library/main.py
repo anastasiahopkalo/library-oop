@@ -1,7 +1,25 @@
+from collections.abc import Iterable
+
 from src.library.book import Book
+from src.library.exceptions import (
+    BookNotFoundError,
+    BookUnavailableError,
+    BorrowLimitError,
+    DuplicateError,
+    LibraryError,
+    MemberNotFoundError,
+    ValidationError,
+)
 from src.library.library import Library
-from src.library.member import Member
+from src.library.member import RegularMember
 from src.library.member_types import PremiumMember, StudentMember
+from src.library.protocols import HasDescribe
+
+
+def print_all(items: Iterable[HasDescribe]) -> None:
+    """Prints descriptions of elements using structural subtyping (Protocol)."""
+    for item in items:
+        print(item.describe())
 
 
 def main() -> None:
@@ -10,10 +28,10 @@ def main() -> None:
     try:
         malformed_book = Book.from_string("Brave New World | Aldous Huxley")
         library.add_book(malformed_book)
-    except ValueError as e:
+    except ValidationError as e:
         print(f"Format error: {e}\n")
 
-    alice = Member(name="Alice", member_id="M001")
+    alice = RegularMember(name="Alice", member_id="M001")
     bob = StudentMember(name="Bob", member_id="S001", school="KPI")
     charlie = PremiumMember(name="Charlie", member_id="P001", annual_fee=100.0)
 
@@ -45,19 +63,50 @@ def main() -> None:
             try:
                 due_date = library.checkout(member.member_id, book.isbn)
                 print(f" '{book.title}' borrowed until {due_date}")
-            except ValueError as e:
+            except LibraryError as e:
                 print(f"'{book.title}' — {e}")
 
     try:
         library.checkout(member_id="M001", isbn=all_books[0].isbn)
-    except ValueError as e:
+    except BookUnavailableError as e:
         print(f"Book is already booked: {e}")
 
     try:
         library.checkout(member_id="M999", isbn=all_books[3].isbn)
-    except ValueError as e:
+    except MemberNotFoundError as e:
         print(f"Member ID doesn't exist: {e}")
 
+    print(f"Total books: {len(library)}")
+    print(f"Is Dune in library: {'9780441172719' in library}\n")
+
+    print("Sorted catalog:")
+    for book in sorted(library):
+        print(f"  • {book.title}")
+
+    print_all(library.members)
+    print_all(library)
+
+    try:
+        library.register_member(alice)
+    except DuplicateError as e:
+        print(f"Duplicate error: {e}")
+
+    try:
+        library.checkout("M001", "9999999999")
+    except BookNotFoundError as e:
+        print(f"Not found error: {e}")
+    except LibraryError as e:
+        print(f"General library error: {e}")
+
+    for b in list(bob.borrowed_books):
+        library.return_book(bob.member_id, b.isbn)
+    free_books = [b for b in library if b.is_available]
+    try:
+        library.checkout(bob.member_id, free_books[0].isbn)
+        library.checkout(bob.member_id, free_books[1].isbn)
+        library.checkout(bob.member_id, free_books[2].isbn)
+    except BorrowLimitError as e:
+        print(f"Limit error: {e}")
 
 if __name__ == "__main__":
     main()

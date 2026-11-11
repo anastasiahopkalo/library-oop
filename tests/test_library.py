@@ -1,8 +1,13 @@
 import pytest
 
 from src.library.book import Book
+from src.library.exceptions import (
+    BookUnavailableError,
+    BorrowLimitError,
+    DuplicateError,
+)
 from src.library.library import Library
-from src.library.member import Member
+from src.library.member import RegularMember
 
 
 @pytest.fixture
@@ -10,9 +15,9 @@ def empty_library() -> Library:
     return Library()
 
 @pytest.fixture
-def library_with_book_and_member() -> tuple[Library, Member, Book]:
+def library_with_book_and_member() -> tuple[Library, RegularMember, Book]:
     library = Library()
-    member = Member("Ana", "M1")
+    member = RegularMember("Ana", "M1")
     book = Book("Dune", "Frank Herbert", "9780441172719")
     library.register_member(member)
     library.add_book(book)
@@ -31,7 +36,7 @@ def test_create_book_defaults_to_available():
     assert book.is_available is True
 
 def test_create_member_empty_borrowed_list():
-    member = Member("Bob", "M002")
+    member = RegularMember("Bob", "M002")
     assert member.name == "Bob"
     assert member.member_id == "M002"
     assert len(member.borrowed_books) == 0
@@ -45,17 +50,17 @@ def test_successful_checkout(library_with_book_and_member):
 
 def test_checkout_already_borrowed_book_raises_value_error(library_with_book_and_member):
     library, member1, book = library_with_book_and_member
-    member2 = Member("Bob", "M002")
+    member2 = RegularMember("Bob", "M002")
     library.register_member(member2)
 
     library.checkout(member1.member_id, book.isbn)
 
-    with pytest.raises(ValueError):
+    with pytest.raises(BookUnavailableError):
         library.checkout(member2.member_id, book.isbn)
 
 def test_exceeding_max_books_raises_and_fourth_book_stays_available(empty_library):
     library = empty_library
-    member = Member("Charlie", "M003")
+    member = RegularMember("Charlie", "M003")
     library.register_member(member)
 
     b1 = Book("Book 1", "Author 1", "1000000001")
@@ -70,7 +75,7 @@ def test_exceeding_max_books_raises_and_fourth_book_stays_available(empty_librar
     library.checkout(member.member_id, b2.isbn)
     library.checkout(member.member_id, b3.isbn)
 
-    with pytest.raises(ValueError):
+    with pytest.raises(BorrowLimitError):
         library.checkout(member.member_id, b4.isbn)
 
     assert b4.is_available is True
@@ -129,14 +134,14 @@ def test_books_equality_ignores_is_available() -> None:
     assert b1 == b2
 
 def test_member_name_stripping_and_validation() -> None:
-    m = Member("  Alice  ", "M001")
+    m = RegularMember("  Alice  ", "M001")
     assert m.name == "Alice"
 
     with pytest.raises(ValueError):
-        Member("   ", "M002")
+        RegularMember("   ", "M002")
 
 def test_member_borrowed_books_immutability() -> None:
-    m = Member("Alice", "M001")
+    m = RegularMember("Alice", "M001")
     book = Book("Dune", "Frank Herbert", "9780441013593")
 
     with pytest.raises(AttributeError):
@@ -150,10 +155,10 @@ def test_add_duplicate_isbn_raises(empty_library: Library) -> None:
     b2 = Book("Dune 2", "Frank Herbert", "9780441013593")
     empty_library.add_book(b1)
 
-    with pytest.raises(ValueError):
+    with pytest.raises(DuplicateError):
         empty_library.add_book(b2)
 
 def test_member_from_dict() -> None:
-    m = Member.from_dict({"name": "Alice", "member_id": "M001"})
+    m = RegularMember.from_dict({"name": "Alice", "member_id": "M001"})
     assert m.name == "Alice"
     assert m.member_id == "M001"

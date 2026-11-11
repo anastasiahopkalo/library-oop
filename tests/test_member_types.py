@@ -3,8 +3,9 @@ from datetime import date, timedelta
 import pytest
 
 from src.library.book import Book
+from src.library.exceptions import BorrowLimitError
 from src.library.library import Library
-from src.library.member import Member
+from src.library.member import RegularMember
 from src.library.member_types import PremiumMember, StudentMember
 
 # Список валідних ISBN-13 для тестування
@@ -24,12 +25,12 @@ VALID_ISBNS = [
 
 def test_student_member_is_instance_of_member() -> None:
     student = StudentMember(name="Bob", member_id="S001", school="KPI")
-    assert isinstance(student, Member)
+    assert isinstance(student, RegularMember)
 
 
 def test_max_books_limits() -> None:
     assert StudentMember.MAX_BOOKS == 2
-    assert Member.MAX_BOOKS == 3
+    assert RegularMember.MAX_BOOKS == 3
 
 
 def test_student_borrow_limit_leaves_third_book_available() -> None:
@@ -41,7 +42,7 @@ def test_student_borrow_limit_leaves_third_book_available() -> None:
     student.borrow(b1)
     student.borrow(b2)
 
-    with pytest.raises(ValueError):
+    with pytest.raises(BorrowLimitError):
         student.borrow(b3)
 
     assert b3.is_available is True
@@ -63,12 +64,12 @@ def test_premium_member_can_borrow_more_than_three_books() -> None:
 @pytest.mark.parametrize(
     "member_instance, expected_limit",
     [
-        (Member(name="Alice", member_id="M001"), 3),
+        (RegularMember(name="Alice", member_id="M001"), 3),
         (StudentMember(name="Bob", member_id="S001", school="KPI"), 2),
         (PremiumMember(name="Charlie", member_id="P001", annual_fee=100.0), 10),
     ],
 )
-def test_member_max_books_parametrized(member_instance: Member, expected_limit: int) -> None:
+def test_member_max_books_parametrized(member_instance: RegularMember, expected_limit: int) -> None:
     assert member_instance.MAX_BOOKS == expected_limit
 
 
@@ -111,7 +112,7 @@ def test_checkout_due_date_calculation() -> None:
 
 def test_active_loans_tracking() -> None:
     library = Library()
-    member = Member(name="Alice", member_id="M001")
+    member = RegularMember(name="Alice", member_id="M001")
     book = Book(title="Book 1", author="Author 1", isbn=VALID_ISBNS[0])
 
     library.register_member(member)
@@ -127,8 +128,8 @@ def test_active_loans_tracking() -> None:
 
 def test_loans_for_returns_only_target_member_loans() -> None:
     library = Library()
-    m1 = Member(name="Alice", member_id="M001")
-    m2 = Member(name="Bob", member_id="M002")
+    m1 = RegularMember(name="Alice", member_id="M001")
+    m2 = RegularMember(name="Bob", member_id="M002")
 
     b1 = Book(title="Book 1", author="Author 1", isbn=VALID_ISBNS[0])
     b2 = Book(title="Book 2", author="Author 2", isbn=VALID_ISBNS[1])
@@ -147,13 +148,13 @@ def test_loans_for_returns_only_target_member_loans() -> None:
     assert m1_loans[0].book == b1
 
 
-def describe_all(members: list[Member]) -> list[str]:
+def describe_all(members: list[RegularMember]) -> list[str]:
     return [str(member) for member in members]
 
 
 def test_describe_all_polymorphism() -> None:
-    members: list[Member] = [
-        Member(name="Alice", member_id="M001"),
+    members: list[RegularMember] = [
+        RegularMember(name="Alice", member_id="M001"),
         StudentMember(name="Bob", member_id="S001", school="KPI"),
         PremiumMember(name="Charlie", member_id="P001", annual_fee=100.0),
     ]
