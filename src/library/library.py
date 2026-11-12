@@ -1,5 +1,7 @@
+from collections.abc import Callable, Iterator
 from collections.abc import Iterator
 from datetime import date, timedelta
+from decimal import Decimal
 from pathlib import Path
 from typing import Self
 
@@ -10,49 +12,60 @@ from src.library.exceptions import (
     DuplicateError,
     MemberNotFoundError,
 )
+from src.library.fines import FineCalculator, FlatRateFineCalculator
 from src.library.loan import Loan
 from src.library.member import RegularMember
+from src.library.repositories import (
+    BookRepository,
+    InMemoryBookRepository,
+    InMemoryMemberRepository,
+    MemberRepository,
+)
 
 
 class Library:
-    def __init__(self)-> None:
-        self._books: dict[str, Book] = {}
-        self._members: dict[str, RegularMember] = {}
+    def __init__(
+            self,
+            books: BookRepository | None = None,
+            members: MemberRepository | None = None,
+            fines: FineCalculator | None = None,
+            clock: Callable[[], date] = date.today,
+    ) -> None:
+        self._books = books if books is not None else InMemoryBookRepository()
+        self._members = members if members is not None else InMemoryMemberRepository()
+        self._fines = fines if fines is not None else FlatRateFineCalculator()
+        self._clock = clock
         self._loans: dict[str, Loan] = {}
 
     def __len__(self) -> int:
-        """Return the total number of books in the catalog."""
-        return len(self._books)
+        return len(self._books.all())
 
     def __iter__(self) -> Iterator[Book]:
-        """Yield books from the catalog."""
-        yield from self._books.values()
+        yield from self._books.all()
 
     def __contains__(self, isbn: object) -> bool:
-        """Check if a book with the given ISBN exists in the library."""
         if not isinstance(isbn, str):
             return False
-        return isbn in self._books
+        return self._books.get(isbn) is not None
 
     @property
     def books(self) -> tuple[Book, ...]:
-        return tuple(self._books.values())
+        return self._books.all()
 
     @property
     def sorted_books(self) -> list[Book]:
-        """Return books sorted by title and author (using Book's __lt__)."""
-        return sorted(self._books.values())
+        return sorted(self._books.all())
 
     @property
     def members(self) -> tuple[RegularMember, ...]:
-        return tuple(self._members.values())
+        return self._members.all()
 
     @property
     def active_loans(self) -> tuple[Loan, ...]:
         return tuple(self._loans.values())
 
     def loans_for(self, member_id: str) -> tuple[Loan, ...]:
-        if member_id not in self._members:
+        if self._members.get(member_id) is None:
             raise MemberNotFoundError(member_id)
         return tuple(
             loan for loan in self._loans.values()
@@ -60,43 +73,47 @@ class Library:
         )
 
     def add_book(self, book: Book)-> None:
-        if book.isbn in self._books:
+        if self._books.get(book.isbn) is not None:
             raise DuplicateError(f"Book {book.title} already exists in the library")
-        self._books[book.isbn] = book
+        self._books.add(book)
     def register_member(self, member: RegularMember)-> None:
-        if member.member_id in self._members:
+        if self._members.get(member.member_id) is not None:
             raise DuplicateError(f"Member {member.member_id} is already registered in the library")
-        self._members[member.member_id] = member
+        self._members.add(member)
     def find_book_by_title(self,title : str) -> Book | None:
-        for book in self._books.values():
+        for book in self._books.all():
             if book.title == title:
                 return book
         return None
     def checkout(self, member_id : str, isbn: str) -> date:
-        if member_id not in self._members:
+        member = self._members.get(member_id)
+        if member is None:
             raise MemberNotFoundError(member_id)
-        if isbn not in self._books:
+        book = self._books.get(isbn)
+        if book is None:
             raise BookNotFoundError(isbn)
-        member = self._members[member_id]
-        book = self._books[isbn]
         if not book.is_available:
             raise BookUnavailableError(book)
-        due_date = date.today() + timedelta(days=member.LOAN_DAYS)
+        due_date = self._clock() + timedelta(days=member.LOAN_DAYS)
         member.borrow(book)
         book.is_available = False
         self._loans[isbn] = Loan(book = book, member_id=member_id, due_date=due_date)
         return due_date
 
-    def return_book(self, member_id: str, isbn: str) -> None:
-        if member_id not in self._members:
+    def return_book(self, member_id: str, isbn: str) -> Decimal:
+        member = self._members.get(member_id)
+        if member is None:
             raise MemberNotFoundError(member_id)
-        if isbn not in self._books:
+        book = self._books.get(isbn)
+        if book is None:
             raise BookNotFoundError(isbn)
-        member = self._members[member_id]
-        book = self._books[isbn]
+        loan = self._loans.get(isbn)
         member.return_book(book)
         book.is_available = True
         self._loans.pop(isbn, None)
+        if loan is None:
+            return Decimal("0.00")
+        return self._fines.calculate(loan, self._clock())
 
     @classmethod
     def from_books_file(cls, path: str | Path) -> Self:
