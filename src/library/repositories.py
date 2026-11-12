@@ -1,6 +1,6 @@
 from typing import Protocol
 from src.library.book import Book
-from src.library.member import RegularMember
+from src.library.member import Member
 
 class BookReader(Protocol):
     def get(self, isbn: str) -> Book | None: ...
@@ -10,11 +10,11 @@ class BookRepository(BookReader, Protocol):
     def add(self, book: Book) -> None: ...
 
 class MemberReader(Protocol):
-    def get(self, member_id: str) -> RegularMember | None: ...
-    def all(self) -> tuple[RegularMember, ...]: ...
+    def get(self, member_id: str) -> Member | None: ...
+    def all(self) -> tuple[Member, ...]: ...
 
 class MemberRepository(MemberReader, Protocol):
-    def add(self, member: RegularMember) -> None: ...
+    def add(self, member: Member) -> None: ...
 
 class InMemoryBookRepository:
     def __init__(self) -> None:
@@ -32,13 +32,13 @@ class InMemoryBookRepository:
 
 class InMemoryMemberRepository:
     def __init__(self) -> None:
-        self._members: dict[str, RegularMember] = {}
+        self._members: dict[str, Member] = {}
 
-    def get(self, member_id: str) -> RegularMember | None:
+    def get(self, member_id: str) -> Member | None:
         return self._members.get(member_id)
 
-    def all(self) -> tuple[RegularMember, ...]:
+    def all(self) -> tuple[Member, ...]:
         return tuple(self._members.values())
 
-    def add(self, member: RegularMember) -> None:
+    def add(self, member: Member) -> None:
         self._members[member.member_id] = member

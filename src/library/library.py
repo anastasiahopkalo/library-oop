@@ -14,7 +14,7 @@ from src.library.exceptions import (
 )
 from src.library.fines import FineCalculator, FlatRateFineCalculator
 from src.library.loan import Loan
-from src.library.member import RegularMember
+from src.library.member import Member
 from src.library.repositories import (
     BookRepository,
     InMemoryBookRepository,
@@ -57,7 +57,7 @@ class Library:
         return sorted(self._books.all())
 
     @property
-    def members(self) -> tuple[RegularMember, ...]:
+    def members(self) -> tuple[Member, ...]:
         return self._members.all()
 
     @property
@@ -76,7 +76,7 @@ class Library:
         if self._books.get(book.isbn) is not None:
             raise DuplicateError(f"Book {book.title} already exists in the library")
         self._books.add(book)
-    def register_member(self, member: RegularMember)-> None:
+    def register_member(self, member: Member)-> None:
         if self._members.get(member.member_id) is not None:
             raise DuplicateError(f"Member {member.member_id} is already registered in the library")
         self._members.add(member)
