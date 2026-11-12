@@ -1,4 +1,5 @@
 from typing import ClassVar
+
 from src.library.member import Member
 
 

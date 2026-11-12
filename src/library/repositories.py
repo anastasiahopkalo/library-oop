@@ -1,6 +1,8 @@
 from typing import Protocol
+
 from src.library.book import Book
 from src.library.member import Member
+
 
 class BookReader(Protocol):
     def get(self, isbn: str) -> Book | None: ...

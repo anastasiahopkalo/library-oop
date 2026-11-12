@@ -18,7 +18,6 @@ from src.library.member import RegularMember
 from src.library.member_types import PremiumMember, StudentMember
 from src.library.protocols import HasDescribe
 from src.library.repositories import InMemoryBookRepository, InMemoryMemberRepository
-from src.library.staff import StaffMember
 
 
 def print_all(items: Iterable[HasDescribe]) -> None:
@@ -49,7 +48,6 @@ def main() -> None:
     alice = RegularMember(name="Alice", member_id="M001")
     bob = StudentMember(name="Bob", member_id="S001", school="KPI")
     charlie = PremiumMember(name="Charlie", member_id="P001", annual_fee=100.0)
-    diana = StaffMember(name="Diana", member_id="ST001")
 
     for member in (alice, bob, charlie):
         library.register_member(member)

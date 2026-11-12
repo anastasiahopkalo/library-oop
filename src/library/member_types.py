@@ -1,6 +1,5 @@
-from src.library.exceptions import ValidationError, LibraryError
+from src.library.exceptions import ValidationError
 from src.library.member import RegularMember
-from src.library.book import Book
 
 
 class StudentMember(RegularMember):
