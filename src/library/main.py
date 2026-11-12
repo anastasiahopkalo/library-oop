@@ -1,4 +1,6 @@
 from collections.abc import Iterable
+from datetime import date, timedelta
+from decimal import Decimal
 
 from src.library.book import Book
 from src.library.exceptions import (
@@ -10,20 +12,33 @@ from src.library.exceptions import (
     MemberNotFoundError,
     ValidationError,
 )
+from src.library.fines import FlatRateFineCalculator
 from src.library.library import Library
 from src.library.member import RegularMember
 from src.library.member_types import PremiumMember, StudentMember
 from src.library.protocols import HasDescribe
+from src.library.repositories import InMemoryBookRepository, InMemoryMemberRepository
+from src.library.staff import StaffMember
 
 
 def print_all(items: Iterable[HasDescribe]) -> None:
-    """Prints descriptions of elements using structural subtyping (Protocol)."""
     for item in items:
         print(item.describe())
 
 
 def main() -> None:
-    library = Library()
+    current_date = date.today()
+
+    books_repo = InMemoryBookRepository()
+    members_repo = InMemoryMemberRepository()
+    fine_calculator = FlatRateFineCalculator(Decimal("0.75"))
+
+    library = Library(
+        books=books_repo,
+        members=members_repo,
+        fines=fine_calculator,
+        clock=lambda: current_date,
+    )
 
     try:
         malformed_book = Book.from_string("Brave New World | Aldous Huxley")
@@ -34,6 +49,7 @@ def main() -> None:
     alice = RegularMember(name="Alice", member_id="M001")
     bob = StudentMember(name="Bob", member_id="S001", school="KPI")
     charlie = PremiumMember(name="Charlie", member_id="P001", annual_fee=100.0)
+    diana = StaffMember(name="Diana", member_id="ST001")
 
     for member in (alice, bob, charlie):
         library.register_member(member)
@@ -107,6 +123,13 @@ def main() -> None:
         library.checkout(bob.member_id, free_books[2].isbn)
     except BorrowLimitError as e:
         print(f"Limit error: {e}")
+
+
+    alice_book = alice.borrowed_books[0]
+    current_date = date.today() + timedelta(days=20)
+    fine = library.return_book(alice.member_id, alice_book.isbn)
+    print(f"\nReturned '{alice_book.title}' 20 days later. Fine: ${fine}")
+
 
 if __name__ == "__main__":
     main()
